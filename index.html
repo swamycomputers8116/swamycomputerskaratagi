@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shashi Provision Store | Karatagi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #fdfdfd; }
+        .glass { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); }
+        [x-cloak] { display: none !important; }
+        .cart-pop { animation: pop 0.4s ease-out; }
+        @keyframes pop { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+    </style>
+</head>
+<body x-data="clientStore()" x-init="init()">
+
+    <div x-show="!isLoggedIn" class="fixed inset-0 z-[100] bg-slate-900 flex items-center justify-center p-4" x-transition>
+        <div class="bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl overflow-hidden">
+            <div class="text-center mb-6">
+                <h2 class="text-3xl font-extrabold text-gray-900" x-text="authMode === 'login' ? 'Welcome Back!' : 'Create Account'"></h2>
+                <p class="text-gray-500 mt-2" x-text="authMode === 'login' ? 'Sign in to start shopping' : 'Join Shashi Provision family'"></p>
+            </div>
+
+            <div class="space-y-4">
+                <template x-if="authMode === 'signup'">
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-3">
+                            <input x-model="regForm.name" type="text" placeholder="Full Name" class="bg-gray-100 p-4 rounded-2xl outline-none focus:ring-2 focus:ring-orange-500 w-full">
+                            <select x-model="regForm.gender" class="bg-gray-100 p-4 rounded-2xl outline-none focus:ring-2 focus:ring-orange-500">
+                                <option value="">Gender</option>
+                                <option>Male</option>
+                                <option>Female</option>
+                            </select>
+                        </div>
+                        <textarea x-model="regForm.address" placeholder="Full Delivery Address" class="w-full bg-gray-100 p-4 rounded-2xl outline-none focus:ring-2 focus:ring-orange-500"></textarea>
+                    </div>
+                </template>
+                
+                <input x-model="regForm.phone" type="text" maxlength="10" placeholder="Mobile Number" 
+                       class="w-full bg-gray-100 p-4 rounded-2xl outline-none focus:ring-2 focus:ring-orange-500">
+                
+                <input x-model="regForm.password" type="password" placeholder="Password" 
+                       class="w-full bg-gray-100 p-4 rounded-2xl outline-none focus:ring-2 focus:ring-orange-500">
+
+                <button @click="handleAuth()" class="w-full bg-orange-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-orange-700 transition shadow-lg" 
+                        x-text="authMode === 'login' ? 'Sign In' : 'Register Now'"></button>
+                
+                <button @click="authMode = (authMode === 'login' ? 'signup' : 'login')" class="w-full text-gray-500 font-semibold text-sm">
+                    <span x-text="authMode === 'login' ? 'New here? Create an account' : 'Already have an account? Sign In'"></span>
+                </button>
+            </div>
+            
+            <div class="mt-8 pt-6 border-t border-gray-100 text-center">
+                <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Designed & Developed By</p>
+                <p class="text-orange-600 font-bold">Swamy Computers, Karatagi</p>
+                <p class="text-gray-900 text-xs">Mo: 9902389300</p>
+            </div>
+        </div>
+    </div>
+
+    <div x-show="showSuccess" class="fixed top-10 left-1/2 -translate-x-1/2 z-[110] bg-green-600 text-white px-8 py-4 rounded-full font-bold shadow-2xl cart-pop" x-cloak>
+        <span x-text="successMsg"></span>
+    </div>
+
+    <nav class="sticky top-0 z-40 glass border-b border-gray-100 px-6 py-4 flex justify-between items-center shadow-sm">
+        <div>
+            <div class="text-xl font-bold text-orange-600 leading-tight">Shashi Provision Store</div>
+            <div class="text-[10px] text-gray-500 font-bold uppercase tracking-tight">Pannapura Cross, Karatagi - 583229</div>
+        </div>
+        <div class="flex items-center gap-3">
+            <button @click="cartOpen = true" class="bg-gray-900 text-white px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 hover:bg-orange-600 transition-all shadow-lg">
+                Basket <span class="bg-orange-500 text-white px-2 py-0.5 rounded-full text-[11px]" x-text="cart.length"></span>
+            </button>
+            <button x-show="isLoggedIn" @click="logout()" class="text-red-500 font-bold text-xs uppercase hover:underline">Logout</button>
+        </div>
+    </nav>
+
+    <main class="p-6 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
+        <template x-for="(p, index) in products" :key="index">
+            <div class="bg-white border border-gray-100 p-4 rounded-[2rem] hover:shadow-2xl transition-all duration-300 flex flex-col group">
+                <div class="h-32 bg-gray-50 rounded-2xl flex items-center justify-center text-6xl mb-4 group-hover:scale-110 transition-transform" x-text="p.icon"></div>
+                <h3 class="font-bold text-gray-800 text-lg leading-tight mb-2" x-text="p.name"></h3>
+                
+                <div class="mt-auto">
+                    <label class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1 block">Select Weight</label>
+                    <select x-model="p.selectedVariantIndex" class="w-full bg-gray-100 border-none text-sm p-3 rounded-xl outline-none focus:ring-2 focus:ring-orange-500 mb-4 cursor-pointer">
+                        <template x-for="(v, vIdx) in p.variants" :key="vIdx">
+                            <option :value="vIdx" x-text="v.unit + ' - ₹' + v.price"></option>
+                        </template>
+                    </select>
+
+                    <div class="flex justify-between items-center bg-gray-50 p-2 rounded-2xl border border-gray-100">
+                        <span class="font-extrabold text-orange-600 text-xl pl-2" x-text="'₹' + p.variants[p.selectedVariantIndex || 0].price"></span>
+                        <button @click="addToCart(p)" class="bg-gray-900 text-white p-3 rounded-xl hover:bg-orange-600 transition shadow-md active:scale-95">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4"></path></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </main>
+
+    <footer class="p-10 text-center border-t border-gray-100 mt-10">
+        <p class="text-xs text-gray-400 font-bold uppercase">Application Designed and Developed By</p>
+        <p class="text-orange-600 font-bold text-xl">Swamy Computers, Karatagi</p>
+        <p class="text-gray-800 font-bold">Mo: 9902389300</p>
+    </footer>
+
+    <div x-show="cartOpen" class="fixed inset-0 z-50 flex justify-end" x-cloak>
+        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="cartOpen = false"></div>
+        <div class="relative w-full max-w-md bg-white h-full p-8 flex flex-col shadow-2xl" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0">
+             <div class="flex justify-between items-center mb-8">
+                <h2 class="text-3xl font-extrabold text-gray-900">Your Basket</h2>
+                <button @click="cartOpen = false" class="text-gray-400 hover:text-black font-bold text-2xl">✕</button>
+            </div>
+            <div class="flex-1 overflow-y-auto space-y-4">
+                <template x-for="(item, idx) in cart" :key="idx">
+                    <div class="flex justify-between items-center bg-gray-50 p-4 rounded-2xl">
+                        <div class="flex items-center gap-4">
+                            <span class="text-3xl" x-text="item.icon"></span>
+                            <div>
+                                <p class="font-bold text-gray-800" x-text="item.name"></p>
+                                <p class="text-[11px] text-orange-600 font-bold" x-text="item.unit + ' @ ₹' + item.price"></p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="font-bold">x<span x-text="item.qty"></span></span>
+                            <button @click="removeFromCart(idx)" class="text-red-500">✕</button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+            <div class="pt-6 border-t border-gray-200 mt-6">
+                <div class="flex justify-between mb-6">
+                    <span class="text-gray-500 font-bold uppercase text-xs">Grand Total</span>
+                    <span class="text-3xl font-extrabold text-orange-600" x-text="'₹' + total"></span>
+                </div>
+                <button @click="placeOrder()" class="w-full bg-orange-600 text-white py-5 rounded-2xl font-bold shadow-xl">Confirm via WhatsApp</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function clientStore() {
+            return {
+                products: [], cart: [], cartOpen: false, isLoggedIn: false, authMode: 'login',
+                showSuccess: false, successMsg: '',
+                regForm: { name: '', phone: '', gender: '', address: '', password: '' },
+                customer: { name: '', whatsapp: '', address: '' },
+                
+                init() {
+                    const session = sessionStorage.getItem('shashi_user');
+                    if(session) {
+                        const user = JSON.parse(session);
+                        this.customer = { name: user.name, whatsapp: user.phone, address: user.address };
+                        this.isLoggedIn = true;
+                    }
+                    this.loadProducts();
+                },
+                loadProducts() {
+                    const saved = localStorage.getItem('freshgo_products');
+                    this.products = saved ? JSON.parse(saved).map(p => ({ ...p, selectedVariantIndex: 0 })) : [];
+                },
+                handleAuth() {
+                    if(!this.regForm.phone || this.regForm.phone.length !== 10) return alert('Enter 10-digit mobile number');
+                    if(!this.regForm.password) return alert('Enter password');
+
+                    let users = JSON.parse(localStorage.getItem('registered_users') || '[]');
+                    
+                    if(this.authMode === 'signup') {
+                        if(!this.regForm.name || !this.regForm.address) return alert('Fill all details');
+                        // Check if user exists
+                        if(users.find(u => u.phone === this.regForm.phone)) return alert("Number already registered");
+                        
+                        users.push({...this.regForm});
+                        localStorage.setItem('registered_users', JSON.stringify(users));
+                        this.triggerPopup("Registration Successful! Please Sign In.");
+                        this.authMode = 'login';
+                    } else {
+                        const user = users.find(u => u.phone === this.regForm.phone && u.password === this.regForm.password);
+                        if(user) {
+                            sessionStorage.setItem('shashi_user', JSON.stringify(user));
+                            this.customer = { name: user.name, whatsapp: user.phone, address: user.address };
+                            this.isLoggedIn = true;
+                            this.triggerPopup("Welcome Back!");
+                        } else {
+                            alert("Invalid phone number or password.");
+                        }
+                    }
+                },
+                logout() {
+                    sessionStorage.removeItem('shashi_user');
+                    this.isLoggedIn = false;
+                    this.cart = [];
+                    window.location.reload();
+                },
+                triggerPopup(msg) {
+                    this.successMsg = msg;
+                    this.showSuccess = true;
+                    setTimeout(() => { this.showSuccess = false }, 3000);
+                },
+                addToCart(p) {
+                    const variant = p.variants[p.selectedVariantIndex || 0];
+                    let item = this.cart.find(i => i.name === p.name && i.unit === variant.unit);
+                    if(item) item.qty++;
+                    else this.cart.push({ name: p.name, icon: p.icon, price: variant.price, unit: variant.unit, qty: 1 });
+                    this.triggerPopup("Added to Basket! 🛒");
+                },
+                removeFromCart(idx) { this.cart.splice(idx, 1); },
+                get total() { return this.cart.reduce((sum, i) => sum + (i.price * i.qty), 0); },
+                placeOrder() {
+                    if(this.cart.length === 0) return alert('Basket is empty');
+                    const itemsList = this.cart.map(i => `• ${i.name} (${i.unit}) x${i.qty} = ₹${i.price * i.qty}`).join('%0A');
+                    const msg = `*NEW ORDER*%0A*Name:* ${this.customer.name}%0A*Phone:* ${this.customer.whatsapp}%0A*Items:*%0A${itemsList}%0A*Total: ₹${this.total}*`;
+                    
+                    const history = JSON.parse(localStorage.getItem('freshgo_orders') || '[]');
+                    history.push({ ...this.customer, items: itemsList.replace(/%0A/g, '<br>'), total: this.total, date: new Date().toLocaleString() });
+                    localStorage.setItem('freshgo_orders', JSON.stringify(history));
+
+                    window.open(`https://wa.me/919902389300?text=${msg}`, '_blank');
+                    this.cart = []; this.cartOpen = false;
+                }
+            }
+        }
+    </script>
+</body>
+</html>
